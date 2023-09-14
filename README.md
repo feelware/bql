@@ -43,4 +43,5 @@ You can use parentheses to group statements.
 ```
 
 ## Credits
+### Boolean expression parser
 Gareth Rees. [Creating truth table from a logical statement](https://codereview.stackexchange.com/questions/145465/creating-truth-table-from-a-logical-statement). 2016-10-29.
