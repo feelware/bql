@@ -1,5 +1,4 @@
 import re
-import csv
 
 # Regular expression matching optional whitespace followed by a token
 # (if group 1 matches) or an error (if group 2 matches).
@@ -17,13 +16,6 @@ def tokenize(s):
         else:
             raise SyntaxError("Unexpected character {!r}".format(error))
     yield TOKEN_END
-
-from collections import namedtuple
-
-Constant = namedtuple('Constant', 'value')
-Variable = namedtuple('Variable', 'name')
-UnaryOp = namedtuple('UnaryOp', 'op operand')
-BinaryOp = namedtuple('BinaryOp', 'left op right')
 
 import operator
 from string import ascii_lowercase, ascii_uppercase
@@ -46,6 +38,13 @@ BINARY_OPERATORS = {
     '→': lambda a, b: not a or b,
     '↔': operator.eq,
 }
+
+from collections import namedtuple
+
+Constant = namedtuple('Constant', 'value')
+Variable = namedtuple('Variable', 'name')
+UnaryOp = namedtuple('UnaryOp', 'op operand')
+BinaryOp = namedtuple('BinaryOp', 'left op right')
 
 def parse(s):
     """Parse s as a Boolean expression and return the parse tree."""
@@ -125,7 +124,6 @@ def parse(s):
 def evaluate(tree, env):
     """Evaluate the expression in the parse tree in the context of an
     environment mapping variable names to their values.
-
     """
     if isinstance(tree, Constant):
         return tree.value
@@ -138,66 +136,44 @@ def evaluate(tree, env):
     else:
         raise TypeError("Expected tree, found {!r}".format(type(tree)))
     
+"""
+tokenizer, parser and evaluator seen above were retrieved from:
+https://codereview.stackexchange.com/questions/145465/creating-truth-table-from-a-logical-statement
+"""
+
 def replace_logical_operators(input_string):
-    # replace 'and', 'or', 'then', 'iff' with boolean operator characters
     pattern = r"(?<!['])\b(and|or|then|iff|not)\b(?!')(?=(?:[^']*'[^']*')*[^']*$)"
-    operator_mapping = {
-        'and': '∧',
-        'or': '∨',
-        'then': '→',
-        'iff': '↔',
-        'not': '~'
-    }
+    operator_mapping = {'and': '∧', 'or': '∨', 'then': '→', 'iff': '↔', 'not': '~'}
     result = re.sub(pattern, lambda match: operator_mapping.get(match.group(0), match.group(0)), input_string)
-    
     return result
 
 def escape_parentheses_inside_quotes(input_string):
-    # Escape parentheses inside single quotes for the split_statement function to work properly
-    input_string = input_string + " "
-    pattern = r"([^']+)\((?=[^']*' |$)"
-    result = re.sub(pattern, r"\1\(", input_string)
-    result = result[:-1]
-
-    pattern = r"(\)([^')]*?)(?=[^']*'$|[^']*' ))"
-    result = re.sub(pattern, r"\\\1", result)
-
+    pattern = r"([^']+)\((?=[^']*' |$)" # Opening parentheses
+    result = re.sub(pattern, r"\1\(", input_string + " ") 
+    pattern = r"(\)([^')]*?)(?=[^']*'$|[^']*' ))" # Closing parentheses
+    result = re.sub(pattern, r"\\\1", result[:-1]) 
     return result
 
 def split_statement(input_string):
-    # Split the input string into a list of strings, each containing a single proposition
-    pattern = r"(?<![\\])[\(\)]|∧|∨|→|↔|~" # Matches boolean operators and non-escaped parentheses
+    # Split input string in atomic propositions
+    pattern = r"(?<![\\])[\(\)]|∧|∨|→|↔|~" # Parentheses and logical operators
     propositions = re.split(pattern, input_string)
-    propositions = [x.strip() for x in propositions if x.strip()] # Remove empty strings and trim whitespace
+    propositions = [x.strip() for x in propositions if x.strip()] # Trim whitespace
     propositions = list(dict.fromkeys(propositions)) # Remove duplicates
-
     # Unscape parentheses
     propositions = [x.replace("\(", "(") for x in propositions]
     propositions = [x.replace("\)", ")") for x in propositions]
-
     return propositions
 
-alphabet = "pqrstuvwxyzabcdefghijklmno"
-
 def set_boolean_aliases(original_input, propositions):
-    # Set boolean aliases for each proposition in the statement
-
-    # Create a dictionary that maps each proposition to a letter of the alphabet, starting with 'a'
-    alphabet_index = 0
+    # Associate each proposition with a boolean variable
     proposition_mapping = {}
-    for proposition in propositions:
-        proposition_mapping[alphabet[alphabet_index]] = proposition
-        alphabet_index += 1
-    
-    # Replace each proposition with its corresponding letter
-    statement = original_input
-    for letter, proposition in proposition_mapping.items():
-        statement = statement.replace(proposition, letter)
-
-    # Replace each boolean operator with its corresponding symbol
-    statement = replace_logical_operators(statement)
-
-    return (statement, proposition_mapping)
+    for i, proposition in enumerate(propositions):
+        proposition_mapping[list(ascii_lowercase)[i]] = proposition
+    for variable, proposition in proposition_mapping.items():
+        original_input = original_input.replace(proposition, variable)
+    original_input = replace_logical_operators(original_input)
+    return (original_input, proposition_mapping)
 
 def print_logo():
     print(
@@ -223,9 +199,9 @@ def main():
     print("Archivos .csv en directorio:")
     for file in glob.glob("**/*.csv", recursive=True):
         print(".\t" + file)
-
     file_path = input("\nInsertar ruta del archivo .csv\n> ")
 
+    import csv
     try:
         open(file_path)
     except:
@@ -242,33 +218,26 @@ def main():
             print(str(i) + ".\t" + header[i])
             field_indexes[header[i]] = "row[" + str(i) + "]"
 
-        # Get pickers
-        pickers = input("\nInsertar formato de salida (ej. 0, 3, 4)\n> ")
-
         import random
+        rand1, rand2 = random.randint(0, len(header) - 1), random.randint(0, len(header))
+        while rand1 == rand2: rand2 = random.randint(0, len(header) - 1)
 
-        # Get the input string
-        rand1 = random.randint(0, len(header) - 1)
-        rand2 = random.randint(0, len(header) - 1)
-        while rand1 == rand2:
-            rand2 = random.randint(0, len(header) - 1)
+        pickers = input("\nInsertar formato de salida (ej. " + str(rand1) + "," + str(rand2) + ")\n> ")
         filters = input("\nInsertar filtros (ej. " + header[rand1] + " ?= 'regex' and " + header[rand2] + " != 'valor')\n> ")
-
-        # Ask to save output to file
         save_output = input("\n¿Guardar salida en un archivo? (s/n)\n> ")
         if save_output == "s":
             output_name = input("\nInsertar nombre del archivo de salida\n> ")
             output_file = open(output_name, "w")
 
-        # Format the input string
+        # Format the filters as a boolean expression
         formatted_input = escape_parentheses_inside_quotes(replace_logical_operators(filters))
         propositions = split_statement(formatted_input)
         statement, proposition_mapping = set_boolean_aliases(filters, propositions)
 
         # Format input propositions as python code
-        l_equal_pattern = r"(\S+)\s*(?= ==| !=)"
-        l_regex_pattern = r"(\S+)\s*(?= \?=)"
-        r_pattern = r"(?<=(== |\?= )')[\s\S]+?(?=')"
+        l_equal_pattern = r"(\S+)\s*(?= ==| !=)" # in "A == 'B'" selects A
+        l_regex_pattern = r"(\S+)\s*(?= \?=)" # in "A ?= 'B'" selects A
+        r_pattern = r"(?<=(== |\?= )')[\s\S]+?(?=')" # in "A == 'B'" or "A ?= 'B'" selects B
 
         code_propositions = propositions[:]
         for i in range(len(code_propositions)):
@@ -284,37 +253,32 @@ def main():
                         code_propositions[i] = "re.search(r\"" + r_val + "\", " + field_index + ", re.IGNORECASE) is not None"
                 except: pass
 
-        proposition_mapping = {}
-        for i in range(len(code_propositions)):
-            proposition_mapping[alphabet[i]] = code_propositions[i]
+        for variable, proposition in proposition_mapping.items():
+            proposition_mapping[variable] = code_propositions[propositions.index(proposition)]
 
+        # Print the header and or save it to a file
         output = ""
         for picker in pickers.split(","):
             output += header[int(picker)] + ","
         print("\n" + output[:-1])
-        if save_output == "s":
-            output_file.write(output[:-1] + "\n")
+        if save_output == "s": output_file.write(output[:-1] + "\n")
 
+        truth_mapping = {}
         # Evaluate the statement for each row in the csv file
         for row in csv_reader:
             try:
-                truth_mapping = {}
-                for letter, proposition in proposition_mapping.items():
-                    proposition_value = (eval(proposition_mapping[letter]))
-                    truth_mapping.update({letter: proposition_value})
-                answer = evaluate(parse(statement), truth_mapping)
-                if answer == True:
+                for variable in proposition_mapping.keys():
+                    proposition_truth = (eval(proposition_mapping[variable]))
+                    truth_mapping.update({variable: proposition_truth})
+                if evaluate(parse(statement), truth_mapping):
                     output = ""
                     for picker in pickers.split(","):
-                        if row[int(picker)] == "":
-                            output += "null,"
-                        elif "," in row[int(picker)]:
-                            output += "\"" + row[int(picker)] + "\","
-                        else:
-                            output += row[int(picker)] + ","
+                        value = row[int(picker)]
+                        if     value == "":   output += "null,"
+                        elif   "," in value:  output += "\"" + value + "\","
+                        else:                 output += value + ","
                     print(output[:-1])
-                    if save_output == "s":
-                        output_file.write(output[:-1] + "\n")
+                    if save_output == "s": output_file.write(output[:-1] + "\n")
             except: pass
 
 if __name__ == '__main__':
