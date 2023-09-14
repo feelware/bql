@@ -158,7 +158,7 @@ def split_statement(input_string):
     # Split input string in atomic propositions
     pattern = r"(?<![\\])[\(\)]|∧|∨|→|↔|~" # Parentheses and logical operators
     propositions = re.split(pattern, input_string)
-    propositions = [x.strip() for x in propositions if x.strip()] # Trim whitespace
+    propositions = [x.strip() for x in propositions if x.strip()] # Trim whitespace and remove empty strings
     propositions = list(dict.fromkeys(propositions)) # Remove duplicates
     # Unscape parentheses
     propositions = [x.replace("\(", "(") for x in propositions]
@@ -219,10 +219,15 @@ def main():
             field_indexes[header[i]] = "row[" + str(i) + "]"
 
         import random
-        rand1, rand2 = random.randint(0, len(header) - 1), random.randint(0, len(header))
+        rand1, rand2 = random.randint(0, len(header) - 1), random.randint(0, len(header) - 1)
         while rand1 == rand2: rand2 = random.randint(0, len(header) - 1)
 
         pickers = input("\nInsertar formato de salida (ej. " + str(rand1) + "," + str(rand2) + ")\n> ")
+        for picker in pickers.replace(" ", "").split(","):
+            if picker not in [str(i) for i in range(len(header))]:
+                print("Error: Formato de salida inválido")
+                exit()
+
         filters = input("\nInsertar filtros (ej. " + header[rand1] + " ?= 'regex' and " + header[rand2] + " != 'valor')\n> ")
         save_output = input("\n¿Guardar salida en un archivo? (s/n)\n> ")
         if save_output == "s":
