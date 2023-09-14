@@ -245,8 +245,14 @@ def main():
         # Get pickers
         pickers = input("\nInsertar formato de salida (ej. 0, 3, 4)\n> ")
 
+        import random
+
         # Get the input string
-        filters = input("\nInsertar filtros (ej. campo1 ?= 'regexA' and campo2 != 'valorB')\n> ")
+        rand1 = random.randint(0, len(header) - 1)
+        rand2 = random.randint(0, len(header) - 1)
+        while rand1 == rand2:
+            rand2 = random.randint(0, len(header) - 1)
+        filters = input("\nInsertar filtros (ej. " + header[rand1] + " ?= 'regex' and " + header[rand2] + " != 'valor')\n> ")
 
         # Ask to save output to file
         save_output = input("\n¿Guardar salida en un archivo? (s/n)\n> ")
